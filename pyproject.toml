@@ -1,0 +1,13 @@
+[project]
+name = "aws-saa-study"
+version = "0.1.0"
+description = "AWS SAA 試験対策 AI 問題生成ツール"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.40.0",
+    "flask>=3.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+start = "app:app"
