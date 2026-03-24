@@ -65,6 +65,36 @@ def init_db():
         """)
 
 
+SYSTEM_PROMPT = """あなたはAWS SAA-C03試験対策の専門家です。指定されたトピックと難易度でシナリオベースの問題を1問生成してください。
+
+要件：
+- 問題文・選択肢・解説はすべて日本語
+- 全選択肢が技術的に妥当に見えること（明らかな誤答は避ける）
+- 解説はAWSのベストプラクティスと各サービスの特徴に言及する"""
+
+_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "question": {"type": "string"},
+        "options": {
+            "type": "object",
+            "properties": {
+                "A": {"type": "string"},
+                "B": {"type": "string"},
+                "C": {"type": "string"},
+                "D": {"type": "string"},
+            },
+            "required": ["A", "B", "C", "D"],
+            "additionalProperties": False,
+        },
+        "correct": {"type": "string", "enum": ["A", "B", "C", "D"]},
+        "explanation": {"type": "string"},
+    },
+    "required": ["question", "options", "correct", "explanation"],
+    "additionalProperties": False,
+}
+
+
 def get_topic_name(topic_id):
     return next((t["name"] for t in AWS_TOPICS if t["id"] == topic_id), topic_id)
 
@@ -78,50 +108,15 @@ def generate_question(topic, difficulty="medium"):
     topic_name = get_topic_name(topic)
     difficulty_text = {"easy": "初級", "medium": "中級", "hard": "上級"}.get(difficulty, "中級")
 
-    prompt = f"""あなたはAWS認定ソリューションアーキテクト - アソシエイト (SAA-C03) の試験対策の専門家です。
-{topic_name}に関する{difficulty_text}レベルの問題を1問生成してください。
-
-以下のJSON形式**のみ**で返答してください（JSONの前後に余分なテキストやmarkdownコードブロックを含めないでください）：
-{{
-  "question": "問題文をここに記載",
-  "options": {{
-    "A": "選択肢A",
-    "B": "選択肢B",
-    "C": "選択肢C",
-    "D": "選択肢D"
-  }},
-  "correct": "正解の選択肢（A/B/C/Dのどれか1文字）",
-  "explanation": "詳細な解説：なぜその答えが正しいか、他の選択肢がなぜ間違いかを日本語で説明"
-}}
-
-作問のポイント：
-- 問題文と解説は必ず日本語で書く
-- 実際のSAA-C03試験に出るようなシナリオベースの問題にする（実際の業務シナリオを使う）
-- 全ての選択肢が技術的に妥当に見えるようにする（明らかな誤答は避ける）
-- 解説は充実させ、AWSのベストプラクティスや各サービスの特徴に触れる"""
-
     message = client.messages.create(
         model="claude-haiku-4-5",
-        max_tokens=2000,
-        messages=[{"role": "user", "content": prompt}],
+        max_tokens=1024,
+        system=[{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral"}}],
+        messages=[{"role": "user", "content": f"トピック: {topic_name}\n難易度: {difficulty_text}"}],
+        output_config={"format": {"type": "json_schema", "schema": _JSON_SCHEMA}},
     )
 
-    response_text = message.content[0].text.strip()
-
-    # markdownコードブロックが含まれる場合の対処
-    if "```" in response_text:
-        lines = response_text.split("\n")
-        json_lines = []
-        in_block = False
-        for line in lines:
-            if line.startswith("```"):
-                in_block = not in_block
-                continue
-            if in_block:
-                json_lines.append(line)
-        response_text = "\n".join(json_lines)
-
-    return json.loads(response_text)
+    return json.loads(message.content[0].text)
 
 
 @app.route("/")
