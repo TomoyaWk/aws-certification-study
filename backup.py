@@ -14,8 +14,9 @@ import sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path
+import os
 
-DATABASE = "study.db"
+DATABASE = os.environ.get("DATABASE_PATH", "study.db")
 DEFAULT_BACKUP = "study_backup.json"
 
 

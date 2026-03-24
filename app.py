@@ -11,7 +11,7 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "aws-saa-study-secret")
 
-DATABASE = "study.db"
+DATABASE = os.environ.get("DATABASE_PATH", "study.db")
 
 AWS_TOPICS = [
     {"id": "iam", "name": "IAM", "description": "Identity & Access Management", "icon": "🔐", "color": "danger"},
