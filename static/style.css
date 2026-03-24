@@ -1,0 +1,57 @@
+.topic-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.topic-hover {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+}
+
+.topic-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.question-text {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: #212529;
+}
+
+.option-btn {
+  transition: background-color 0.15s ease;
+  border-radius: 8px !important;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  white-space: normal;
+  text-align: left;
+}
+
+.option-btn:not(:disabled):hover {
+  background-color: #e9ecef;
+  border-color: #6c757d;
+}
+
+.navbar-brand {
+  font-size: 1.1rem;
+}
+
+body {
+  background-color: #f8f9fa;
+}
+
+.card {
+  border-radius: 12px !important;
+}
+
+.accordion-button:not(.collapsed) {
+  background-color: #f8f9fa;
+  color: inherit;
+  box-shadow: none;
+}
+
+.accordion-button:focus {
+  box-shadow: none;
+}

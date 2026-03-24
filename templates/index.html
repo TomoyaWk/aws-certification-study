@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}AWS SAA 学習ツール - ホーム{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col">
+    <h1 class="h3 fw-bold">AWS SAA 対策 AI 問題生成</h1>
+    <p class="text-muted">トピックを選んで、Claudeが生成するオリジナル問題で学習しましょう。</p>
+  </div>
+</div>
+
+{% if stats and stats['total'] > 0 %}
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card text-center border-0 bg-primary bg-opacity-10">
+      <div class="card-body py-3">
+        <div class="fs-1 fw-bold text-primary">{{ stats['total'] }}</div>
+        <div class="text-muted small">回答済み</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center border-0 bg-success bg-opacity-10">
+      <div class="card-body py-3">
+        <div class="fs-1 fw-bold text-success">{{ stats['correct'] }}</div>
+        <div class="text-muted small">正解数</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center border-0 bg-warning bg-opacity-10">
+      <div class="card-body py-3">
+        {% set rate = ((stats['correct'] / stats['total']) * 100) | round(1) %}
+        <div class="fs-1 fw-bold text-warning">{{ rate }}%</div>
+        <div class="text-muted small">正答率</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="row mb-3 align-items-center">
+  <div class="col">
+    <h5 class="mb-0">トピックを選択</h5>
+  </div>
+  <div class="col-auto">
+    <div class="btn-group btn-group-sm" id="difficultySelector" role="group">
+      <input type="radio" class="btn-check" name="difficulty" id="diff-easy" value="easy">
+      <label class="btn btn-outline-success" for="diff-easy">初級</label>
+      <input type="radio" class="btn-check" name="difficulty" id="diff-medium" value="medium" checked>
+      <label class="btn btn-outline-warning" for="diff-medium">中級</label>
+      <input type="radio" class="btn-check" name="difficulty" id="diff-hard" value="hard">
+      <label class="btn btn-outline-danger" for="diff-hard">上級</label>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  {% for topic in topics %}
+  <div class="col-md-4 col-lg-3">
+    <a href="/quiz/{{ topic.id }}?difficulty=medium" class="topic-card text-decoration-none" data-topic="{{ topic.id }}">
+      <div class="card h-100 border-0 shadow-sm topic-hover">
+        <div class="card-body text-center p-3">
+          <div class="topic-icon mb-2">{{ topic.icon }}</div>
+          <h6 class="card-title fw-bold mb-1">{{ topic.name }}</h6>
+          <p class="card-text text-muted small mb-2">{{ topic.description }}</p>
+          {% if topic.id in topic_stats %}
+            {% set ts = topic_stats[topic.id] %}
+            {% set tr = ((ts['correct'] / ts['total']) * 100) | round(0) | int %}
+            <div class="progress" style="height: 4px;">
+              <div class="progress-bar bg-{{ topic.color }}" style="width: {{ tr }}%"></div>
+            </div>
+            <div class="text-muted" style="font-size: 0.7rem;">{{ ts['correct'] }}/{{ ts['total'] }} 正解</div>
+          {% else %}
+            <div class="text-muted" style="font-size: 0.7rem;">未挑戦</div>
+          {% endif %}
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.topic-card').forEach(card => {
+  card.addEventListener('click', function(e) {
+    e.preventDefault();
+    const topic = this.dataset.topic;
+    const difficulty = document.querySelector('input[name="difficulty"]:checked').value;
+    window.location.href = `/quiz/${topic}?difficulty=${difficulty}`;
+  });
+});
+</script>
+{% endblock %}

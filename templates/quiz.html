@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}{{ topic_info.name }} - AWS SAA 学習{% endblock %}
+
+{% block content %}
+<div class="row mb-3 align-items-center">
+  <div class="col">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="/">ホーム</a></li>
+        <li class="breadcrumb-item active">{{ topic_info.name }}</li>
+      </ol>
+    </nav>
+  </div>
+  <div class="col-auto d-flex align-items-center gap-2">
+    <span id="session-badge" class="badge bg-secondary">0 / 0</span>
+    <span class="badge bg-{{ topic_info.color }}">
+      {% if difficulty == 'easy' %}初級{% elif difficulty == 'hard' %}上級{% else %}中級{% endif %}
+    </span>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+
+    <!-- Loading State -->
+    <div id="loading" class="text-center py-5">
+      <div class="spinner-border text-primary mb-3" role="status"></div>
+      <p class="text-muted">Claudeが問題を生成中...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="error-state" class="d-none">
+      <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <span id="error-message"></span>
+      </div>
+      <button class="btn btn-primary" onclick="loadQuestion()">
+        <i class="bi bi-arrow-clockwise me-1"></i>再試行
+      </button>
+    </div>
+
+    <!-- Question Card -->
+    <div id="question-card" class="d-none">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+          <span class="fw-semibold text-{{ topic_info.color }}">
+            {{ topic_info.icon }} {{ topic_info.name }}
+          </span>
+          <span class="text-muted small" id="question-num">問題 #1</span>
+        </div>
+        <div class="card-body p-4">
+          <p class="question-text mb-4" id="question-text"></p>
+
+          <div id="options-container">
+            {% for opt in ['A', 'B', 'C', 'D'] %}
+            <button class="btn btn-outline-secondary w-100 text-start mb-2 option-btn"
+                    id="option-{{ opt }}"
+                    onclick="submitAnswer('{{ opt }}')"
+                    data-opt="{{ opt }}">
+            </button>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Explanation (hidden until answered) -->
+      <div id="explanation" class="d-none">
+        <div class="card border-0 shadow-sm mb-3" id="result-card">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center mb-3">
+              <span id="result-badge" class="badge fs-6 me-2"></span>
+              <span class="text-muted small">正解: <strong id="correct-answer"></strong></span>
+            </div>
+            <h6 class="fw-semibold mb-2"><i class="bi bi-lightbulb me-1 text-warning"></i>解説</h6>
+            <p class="mb-0" id="explanation-text" style="line-height: 1.7;"></p>
+          </div>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-primary" onclick="loadQuestion()">
+            <i class="bi bi-arrow-right me-1"></i>次の問題
+          </button>
+          <a href="/" class="btn btn-outline-secondary">
+            <i class="bi bi-grid me-1"></i>トピック選択
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TOPIC = "{{ topic }}";
+const DIFFICULTY = "{{ difficulty }}";
+let currentQuestion = null;
+let questionCount = 0;
+let sessionScore = { correct: 0, total: 0 };
+
+async function loadQuestion() {
+  // Reset UI
+  document.getElementById('loading').classList.remove('d-none');
+  document.getElementById('question-card').classList.add('d-none');
+  document.getElementById('error-state').classList.add('d-none');
+  document.getElementById('explanation').classList.add('d-none');
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic: TOPIC, difficulty: DIFFICULTY })
+    });
+    const data = await res.json();
+
+    if (!data.success) throw new Error(data.error);
+
+    currentQuestion = data.question;
+    questionCount++;
+    displayQuestion(data.question);
+  } catch (e) {
+    document.getElementById('loading').classList.add('d-none');
+    document.getElementById('error-message').textContent = e.message;
+    document.getElementById('error-state').classList.remove('d-none');
+  }
+}
+
+function displayQuestion(q) {
+  document.getElementById('question-text').textContent = q.question;
+  document.getElementById('question-num').textContent = `問題 #${questionCount}`;
+
+  ['A', 'B', 'C', 'D'].forEach(opt => {
+    const btn = document.getElementById(`option-${opt}`);
+    btn.textContent = `${opt}．${q.options[opt]}`;
+    btn.disabled = false;
+    btn.className = 'btn btn-outline-secondary w-100 text-start mb-2 option-btn';
+  });
+
+  document.getElementById('loading').classList.add('d-none');
+  document.getElementById('question-card').classList.remove('d-none');
+  document.getElementById('explanation').classList.add('d-none');
+}
+
+async function submitAnswer(selected) {
+  if (!currentQuestion || document.getElementById(`option-${selected}`).disabled) return;
+
+  // Disable all buttons
+  ['A', 'B', 'C', 'D'].forEach(opt => {
+    document.getElementById(`option-${opt}`).disabled = true;
+  });
+
+  try {
+    const res = await fetch('/api/answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question_id: currentQuestion.id, selected })
+    });
+    const data = await res.json();
+
+    sessionScore.total++;
+    if (data.is_correct) sessionScore.correct++;
+    updateScoreBadge();
+
+    // Color the buttons
+    ['A', 'B', 'C', 'D'].forEach(opt => {
+      const btn = document.getElementById(`option-${opt}`);
+      if (opt === data.correct) {
+        btn.className = 'btn btn-success w-100 text-start mb-2 option-btn';
+      } else if (opt === selected && !data.is_correct) {
+        btn.className = 'btn btn-danger w-100 text-start mb-2 option-btn';
+      } else {
+        btn.className = 'btn btn-outline-secondary w-100 text-start mb-2 option-btn';
+      }
+    });
+
+    // Show explanation
+    const resultBadge = document.getElementById('result-badge');
+    const resultCard = document.getElementById('result-card');
+    if (data.is_correct) {
+      resultBadge.textContent = '✅ 正解！';
+      resultBadge.className = 'badge bg-success fs-6 me-2';
+      resultCard.classList.remove('border-danger');
+      resultCard.classList.add('border-success', 'border');
+    } else {
+      resultBadge.textContent = '❌ 不正解';
+      resultBadge.className = 'badge bg-danger fs-6 me-2';
+      resultCard.classList.remove('border-success');
+      resultCard.classList.add('border-danger', 'border');
+    }
+
+    document.getElementById('correct-answer').textContent =
+      `${data.correct}．${currentQuestion.options[data.correct]}`;
+    document.getElementById('explanation-text').textContent = data.explanation;
+    document.getElementById('explanation').classList.remove('d-none');
+
+    // Scroll to explanation
+    document.getElementById('explanation').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } catch (e) {
+    alert('エラーが発生しました: ' + e.message);
+  }
+}
+
+function updateScoreBadge() {
+  const badge = document.getElementById('session-badge');
+  const rate = sessionScore.total > 0
+    ? Math.round((sessionScore.correct / sessionScore.total) * 100)
+    : 0;
+  badge.textContent = `${sessionScore.correct} / ${sessionScore.total} (${rate}%)`;
+
+  if (rate >= 70) badge.className = 'badge bg-success';
+  else if (rate >= 50) badge.className = 'badge bg-warning text-dark';
+  else badge.className = 'badge bg-danger';
+}
+
+// Start on page load
+loadQuestion();
+</script>
+{% endblock %}

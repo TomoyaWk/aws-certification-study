@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}学習履歴 - AWS SAA{% endblock %}
+
+{% block content %}
+<h2 class="h4 fw-bold mb-4">学習履歴 & 統計</h2>
+
+<!-- Overall Stats -->
+{% if overall and overall['total'] > 0 %}
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card border-0 bg-primary bg-opacity-10 text-center">
+      <div class="card-body">
+        <div class="fs-1 fw-bold text-primary">{{ overall['total'] }}</div>
+        <div class="text-muted">総回答数</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-0 bg-success bg-opacity-10 text-center">
+      <div class="card-body">
+        <div class="fs-1 fw-bold text-success">{{ overall['correct'] }}</div>
+        <div class="text-muted">正解数</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-0 bg-warning bg-opacity-10 text-center">
+      <div class="card-body">
+        {% set rate = ((overall['correct'] / overall['total']) * 100) | round(1) %}
+        <div class="fs-1 fw-bold text-warning">{{ rate }}%</div>
+        <div class="text-muted">総合正答率</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Topic Stats -->
+{% if topic_stats %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-white fw-semibold">
+    <i class="bi bi-bar-chart me-2"></i>トピック別成績
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>トピック</th>
+            <th class="text-center">回答数</th>
+            <th class="text-center">正解</th>
+            <th>正答率</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ts in topic_stats %}
+          {% set rate = ((ts['correct'] / ts['total']) * 100) | round(1) %}
+          <tr>
+            <td class="fw-semibold">{{ get_topic_name(ts['topic']) }}</td>
+            <td class="text-center">{{ ts['total'] }}</td>
+            <td class="text-center">{{ ts['correct'] }}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress flex-grow-1" style="height: 6px;">
+                  <div class="progress-bar {% if rate >= 70 %}bg-success{% elif rate >= 50 %}bg-warning{% else %}bg-danger{% endif %}"
+                       style="width: {{ rate }}%"></div>
+                </div>
+                <span class="small text-muted" style="min-width: 40px;">{{ rate }}%</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Recent History -->
+{% if records %}
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-white fw-semibold">
+    <i class="bi bi-clock-history me-2"></i>最近の問題 (最新50件)
+  </div>
+  <div class="card-body p-0">
+    <div class="accordion" id="historyAccordion">
+      {% for r in records %}
+      {% set opts = json.loads(r['options']) %}
+      <div class="accordion-item border-0 border-bottom">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed py-3" type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#collapse-{{ loop.index }}">
+            <span class="me-2">
+              {% if r['is_correct'] %}
+                <i class="bi bi-check-circle-fill text-success"></i>
+              {% else %}
+                <i class="bi bi-x-circle-fill text-danger"></i>
+              {% endif %}
+            </span>
+            <span class="badge bg-secondary me-2 small">{{ get_topic_name(r['topic']) }}</span>
+            <span class="text-truncate small">{{ r['question'][:80] }}{% if r['question']|length > 80 %}...{% endif %}</span>
+          </button>
+        </h2>
+        <div id="collapse-{{ loop.index }}" class="accordion-collapse collapse">
+          <div class="accordion-body pt-0">
+            <p class="mb-3">{{ r['question'] }}</p>
+            <div class="mb-3">
+              {% for opt_key, opt_val in opts.items() %}
+              <div class="p-2 rounded mb-1 small
+                {% if opt_key == r['correct'] %}bg-success bg-opacity-15 border border-success{% elif opt_key == r['selected'] and r['selected'] != r['correct'] %}bg-danger bg-opacity-15 border border-danger{% else %}bg-light{% endif %}">
+                <strong>{{ opt_key }}.</strong> {{ opt_val }}
+                {% if opt_key == r['correct'] %}<span class="badge bg-success ms-1">正解</span>{% endif %}
+                {% if opt_key == r['selected'] and r['selected'] != r['correct'] %}<span class="badge bg-danger ms-1">あなたの回答</span>{% endif %}
+              </div>
+              {% endfor %}
+            </div>
+            <div class="alert alert-light border mb-0">
+              <i class="bi bi-lightbulb text-warning me-1"></i>
+              <strong>解説:</strong> {{ r['explanation'] }}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="text-center py-5 text-muted">
+  <i class="bi bi-inbox display-4 d-block mb-3"></i>
+  <p>まだ学習履歴がありません。</p>
+  <a href="/" class="btn btn-primary">学習を始める</a>
+</div>
+{% endif %}
+{% endblock %}
