@@ -101,7 +101,7 @@ def generate_question(topic, difficulty="medium"):
 - 解説は充実させ、AWSのベストプラクティスや各サービスの特徴に触れる"""
 
     message = client.messages.create(
-        model="claude-opus-4-6",
+        model="claude-haiku-4-5",
         max_tokens=2000,
         messages=[{"role": "user", "content": prompt}],
     )
